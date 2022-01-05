@@ -1,0 +1,232 @@
+---
+title: "Restart: programmation"
+output:
+  learnr::tutorial:
+    progressive: true
+    allow_skip: true
+runtime: shiny_prerendered
+css: "www/style_tuto_learnr.css"
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(gradethis)
+library(testthat)
+library(tidyverse)
+
+Sys.setlocale("LC_ALL", "fr_FR.UTF-8")
+gradethis_setup()
+ 
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+```
+
+
+🧐<a href="http://perso.ens-lyon.fr/lise.vaudor/Supports_formation/Restart_6_programmation.html#(1)" target="_blank">Cliquer ici pour les diapos de cours</a>
+
+Pour cette partie vous tiendrez le rôle d'un **gérant de zoo**, qui s'interroge sur la comptabilité de son établissement... Vous serez ainsi amenés à manipuler différents tableaux de données, de faire des petits calculs, quelques graphiques de synthèse, etc.
+
+Le dossier fourni [ici](http://perso.ens-lyon.fr/lise.vaudor/datasets/zoo) contient un sous-dossier "fiches_especes".
+
+Ouvrez quelques-unes de ces fiches. Elles sont **toutes organisées selon un modèle commun**. Nous souhaiterions mettre toutes les informations qu'elles contiennent sous forme d'**un seul et même tableau**,dont les premières lignes ressembleraient à ceci:
+
+```{r,echo=FALSE}
+alim=readr::read_csv2("alim.csv")
+head(alim)
+```
+
+
+## Reformater une fiche: lignes de commandes
+
+Voici l'allure d'une fiche brute:
+
+```{r read_antilope}
+fiche=readr::read_csv2(paste0("http://perso.ens-lyon.fr/lise.vaudor/datasets/zoo/",
+                      "fiches_especes/fiche_antilope.csv"), col_names=FALSE)
+fiche
+```
+
+Transformons-la comme suit:
+
+```{r tranform_antilope}
+fiche_formatee=str_split_fixed(fiche$X1,":", n=2) %>%
+  as_tibble() %>% 
+  setNames(c("categorie","quantite")) %>% 
+  mutate(quantite=str_replace_all(quantite,"[\\s%kg]","")) %>% 
+  mutate(quantite=as.numeric(quantite))
+fiche_formatee
+```
+
+```{r choix_geom}
+question("A quoi sert la première ligne de commande ci-dessus?",
+         answer("à définir le format numérique des données"),
+         answer("à définir deux colonnes de part et d'autre du ':'",correct=TRUE),
+         answer("à garder en mémoire les unités"),
+         incorrect="hmmmm... comment?",
+         allow_retry=TRUE)
+```
+
+## Ecrire une fonction pour lire une fiche
+
+Complétez la fonction suivante pour qu'**à partir d'un nom d'espèce** (par exemple, "antilope"), la fonction **lise la fiche correspondante et renvoie son contenu brut**:
+
+```{r complete_fonction, exercise=TRUE}
+lit_fiche=function(______){
+  fiche=readr::read_csv2(paste0("http://perso.ens-lyon.fr/lise.vaudor/datasets/zoo/",
+                         "fiches_especes/fiche_",
+                         espece,
+                         ".csv"), col_names=FALSE)
+  return(fiche)
+}
+lit_fiche("antilope")
+```
+
+
+```{r complete_fonction-solution}
+lit_fiche=function(espece){
+  fiche=readr::read_csv2(paste0("http://perso.ens-lyon.fr/lise.vaudor/datasets/zoo/",
+                         "fiches_especes/fiche_",
+                         espece,
+                         ".csv"), col_names=FALSE)
+  return(fiche)
+}
+fiche=lit_fiche("antilope")
+```
+
+```{r complete_fonction-check}
+grade_this({
+  fiche_antilope= readr::read_csv2(paste0("http://perso.ens-lyon.fr/lise.vaudor/datasets/zoo/",
+                         "fiches_especes/fiche_antilope.csv"), col_names=FALSE)
+  if(!identical(.envir_result[["fiche"]],fiche_antilope)){
+    fail( 'Ah non! fiche ne correspond pas au resultat attendu')
+  }
+  pass("Tres bien! c'est un debut!")
+})
+```
+
+ter une fiche: une colonne=une variable (et une unité)
+
+Chaque fiche comprend le poids total d'aliment (categorie== "quantite") et les proportions des différents types d'aliments. C'est en fait un peu mélanger les torchons et les serviettes!!
+
+On va plutôt essayer d'indiquer un pourcentage et le poids correspondant pour chaque catégorie d'aliment...
+
+```{r, echo=FALSE}
+lit_fiche=function(espece){
+  fiche=readr::read_csv2(paste0("http://perso.ens-lyon.fr/lise.vaudor/datasets/zoo/",
+                         "fiches_especes/fiche_",
+                         espece,
+                         ".csv"), col_names=FALSE)
+  return(fiche)
+}
+```
+
+C'est ce que permettent de réaliser les lignes suivantes, ici par exemple pour la fiche "antilope":
+  
+  ```{r montre_formatage, echo=TRUE, exercise=FALSE}
+# lecture de la fiche brute
+fiche_brute=readr::read_csv2(paste0("http://perso.ens-lyon.fr/lise.vaudor/datasets/zoo/",
+                                    "fiches_especes/fiche_",
+                                    "antilope",
+                                    ".csv"), col_names=FALSE)
+fiche_brute
+
+# mise en forme
+fiche_temp=str_split_fixed(fiche_brute$X1,":", n=2) %>%
+  as_tibble() %>% 
+  setNames(c("categorie","quantite")) %>% 
+  mutate(quantite=str_replace_all(quantite,"[\\s%kg]","")) %>% 
+  mutate(quantite=as.numeric(quantite))
+fiche_temp
+
+
+# recup quantite totale
+quantite_totale=fiche_temp %>%
+  filter(categorie=="quantite") %>% 
+  pull(quantite)
+quantite_totale
+
+# calcul du pourcentage et du poids pour chaque catégorie d'aliment
+fiche_formatee=fiche_temp %>% 
+  filter(categorie!="quantite") %>%
+  mutate(pourcentage=quantite/100) %>% 
+  mutate(poids=quantite_totale*pourcentage)
+fiche_formatee
+```
+
+Pour l'instant, la fonction `lit_fiche()` lit la fiche et la renvoie dans sa **forme brute**: il faut donc ajouter quelques lignes pour que cette fonction renvoie la **fiche formatée** (comme on l'attend vu son nom...). La librairie `tidyverse` est déjà chargée dans l'environnement. Je vous laisse **compléter la fonction** en vous inspirant des lignes de code ci-dessus:
+
+```{r ajoute_formatage-setup}
+library(tidyverse)
+```
+
+
+```{r ajoute_formatage, exercise=TRUE}
+formate_fiche=function(espece){
+  fiche_brute=lit_fiche(espece)
+  fiche_formatee=_____
+  ________
+  ________
+  ________
+
+  return(fiche_formatee)
+}
+formate_fiche("lion")
+```
+
+
+```{r ajoute_formatage-solution}
+formate_fiche=function(espece){
+  fiche_brute=readr::read_csv2(paste0("http://perso.ens-lyon.fr/lise.vaudor/datasets/zoo/",
+                       "fiches_especes/fiche_",
+                       espece,
+                       ".csv"), col_names=FALSE)
+  fiche_temp=str_split_fixed(fiche_brute$X1,":", n=2) %>%
+    as_tibble() %>% 
+    setNames(c("categorie","quantite")) %>% 
+    mutate(quantite=str_replace_all(quantite,"[\\s%kg]","")) %>% 
+    mutate(quantite=as.numeric(quantite))
+
+  quantite_totale=fiche_temp %>%
+    filter(categorie=="quantite") %>% 
+    pull(quantite)
+  
+  fiche_formatee=fiche_temp %>% 
+    filter(categorie!="quantite") %>%
+    mutate(pourcentage=quantite/100) %>% 
+    mutate(poids=quantite_totale*pourcentage)
+    return(fiche_formatee)
+}
+formate_fiche("lion")
+```
+
+## Appliquer cette fonction, en boucle
+
+Voici les espèces pour lesquelles vous disposez d'une fiche d'alimentation:
+
+
+```{r, echo=TRUE}
+especes=c("antilope","autruche","chameau","lion","elephant",
+                      "fennec","flamand_rose","girafes","guepard","hyene",
+                      "iguane","lion","loup","lynx","otarie","ours_polaire",
+                      "ours","panthere","perroquets","phacochere","rhinoceros",
+                      "serpent","singe","suricate","tigre","tortue")
+```
+
+```{r boucle_espece-setup}
+library(tidyverse)
+source("scripts/formate_fiche.R")
+```
+
+Faites tourner une fonction de purrr sur l'ensemble du vecteur "especes" de manière à obtenir une tibble unique en sortie.
+
+```{r boucle_espece, exercise=TRUE}
+alim=________(especes, .f=___) %>% 
+  bind_rows()
+```
+
+
+```{r boucle_espece-solution}
+alim=map(especes,.f=formate_fiche) %>% 
+  bind_rows()
+```
+
+Remarque: vous auriez pu éviter l'appel à bind_rows en faisant directement `map_df()`
